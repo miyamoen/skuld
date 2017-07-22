@@ -10,7 +10,7 @@ import Time.DateTime as DateTime exposing (DateTime, DateTimeDelta)
 type alias Model =
     { now : DateTime
     , offset : Float
-    , deadLines : List DeadLine
+    , deadLine : Maybe DeadLine
     , permission : Permission
     , input : Input
     }

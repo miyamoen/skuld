@@ -2,7 +2,7 @@ port module Main exposing (..)
 
 import Types exposing (..)
 import Helper exposing (..)
-import Views exposing (..)
+import View exposing (view)
 import Html
 import Time exposing (Time, every, second)
 import Time.DateTime as DateTime exposing (DateTime)
@@ -30,7 +30,7 @@ init : ( Model, List (Cmd Msg) )
 init =
     { now = DateTime.epoch
     , offset = 0
-    , deadLines = []
+    , deadLine = Nothing
     , permission = Default
     , input =
         { delta = 0
@@ -63,12 +63,19 @@ update msg model =
                 ( model_, cmds ) =
                     update (Now now) model
 
-                notifications =
-                    List.filter (isOver model.now) model.deadLines
-                        |> List.map toNotifyOption
-                        |> List.map (notify model.permission)
+                notification =
+                    case model.deadLine of
+                        Just deadLine ->
+                            if isOver model.now deadLine then
+                                toNotifyOption deadLine
+                                    |> notify model.permission
+                            else
+                                Cmd.none
+
+                        Nothing ->
+                            Cmd.none
             in
-                model_ => cmds ++ notifications
+                model_ => notification :: cmds
 
         CheckPermission permission ->
             { model | permission = permission }
@@ -80,28 +87,16 @@ update msg model =
                         []
 
         SetDelta ->
-            let
-                _ =
-                    DateTime.toISO8601 model.now |> log "nowだよ"
-
-                _ =
-                    model.input.delta |> log "deltaだよ"
-
-                _ =
-                    DateTime.addSeconds model.input.delta model.now
-                        |> DateTime.toISO8601
-                        |> log "足した後"
-            in
-                { model
-                    | deadLines =
+            { model
+                | deadLine =
+                    Just
                         { title = model.input.title
                         , description = model.input.description
                         , onSet = model.now
                         , time = DateTime.addSeconds model.input.delta model.now
                         }
-                            :: model.deadLines
-                }
-                    => []
+            }
+                => []
 
         Scroll Hour Up ->
             Focus.update inputHourFocus ((+) 1) model
@@ -140,7 +135,7 @@ update msg model =
                 => []
 
         StopAlerm ->
-            { model | deadLines = List.filter (isOver model.now >> not) model.deadLines }
+            { model | deadLine = Nothing }
                 => []
 
 
